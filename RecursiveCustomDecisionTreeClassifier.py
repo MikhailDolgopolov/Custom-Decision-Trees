@@ -6,6 +6,7 @@ import graphviz
 from graphviz import Digraph, Source
 from sklearn.tree import DecisionTreeClassifier, export_graphviz
 import numpy as np
+from sklearn.utils import check_X_y
 
 from helpers import generate_distinct_colors_hex
 
@@ -15,22 +16,41 @@ class RecursiveCustomDecisionTreeClassifier(DecisionTreeClassifier):
         if split_sequence is None:
             split_sequence = []
         self.split_sequence = split_sequence  # List of feature indices for splits
-        print('got', self.split_sequence)
         super().__init__(**kwargs)
         self.__kwargs = kwargs
-        if len(split_sequence)>0: self.split_index = split_sequence[0]
-        self.threshold = None  # To store the split threshold at each node
-        self.left_tree = None
-        self.right_tree = None
-        self.leaf_model = None  # Store regular DecisionTreeClassifier at leaves
-        self.impurity = None
-        self.n_node_samples = None
-        self.value = None  # Class distribution at the node
+        if len(split_sequence) > 0: self.split_index = split_sequence[0]
+        # self.threshold = None  # To store the split threshold at each node
+        # self.left_tree = None
+        # self.right_tree = None
+        # self.leaf_model = None  # Store regular DecisionTreeClassifier at leaves
+        # self.impurity = None
+        # self.n_node_samples = None
+        # self.value = None  # Class distribution at the node
 
-    def fit(self, X, y, depth=0):
-        self.depth = depth
+    @property
+    def tree_(self):
+        if self.leaf_model:
+            return self.leaf_model.tree_
+        else:
+            return self.left_tree.tree_
+
+    def fit(self, X, y, **kwargs):
+        X, y = check_X_y(X, y, accept_sparse=False)
+
+        # Check if the input data is empty
+        if X.shape[0] == 0 or len(y) == 0:
+            raise ValueError("Training data is empty.")
+        self.depth = kwargs.get('depth', 0)
+        self.X_, self.y_ = X, y
+        if len(y.shape) > 1 and y.shape[1] > 1:
+            # If y is multi-output, set n_outputs_ to the number of columns in y
+            self.n_outputs_ = y.shape[1]
+        else:
+            # Otherwise, it's a single-output problem
+            self.n_outputs_ = 1
+        self.n_classes_ = len(np.unique(y))
         # Check if we've exhausted the split sequence
-        if depth >= len(self.split_sequence):
+        if len(self.split_sequence) == 0:
             # At leaf, train a regular tree on remaining data
             self.leaf_model = DecisionTreeClassifier(**self.__kwargs)
             self.leaf_model.fit(X, y)
@@ -59,11 +79,11 @@ class RecursiveCustomDecisionTreeClassifier(DecisionTreeClassifier):
         # Recursively train left and right subtrees
         self.left_tree = RecursiveCustomDecisionTreeClassifier(
             self.split_sequence[1:], **self.__kwargs)
-        self.left_tree.fit(X_left, y[left_mask], depth=depth + 1)
+        self.left_tree.fit(X_left, y[left_mask], depth=self.depth + 1)
 
         self.right_tree = RecursiveCustomDecisionTreeClassifier(
             self.split_sequence[1:], **self.__kwargs)
-        self.right_tree.fit(X_right, y[right_mask], depth=depth + 1)
+        self.right_tree.fit(X_right, y[right_mask], depth=self.depth + 1)
 
         self.impurity = self._calculate_impurity(y)  # Impurity for internal node
         self.n_node_samples = len(y)  # Number of samples at this node
@@ -78,14 +98,14 @@ class RecursiveCustomDecisionTreeClassifier(DecisionTreeClassifier):
         impurity = 1 - np.sum(probabilities ** 2)
         return impurity
 
-    def predict(self, X):
+    def predict(self, X, check_input=True):
         # Iterate through each sample and predict recursively
-        return np.array([self._predict_instance(instance) for instance in X])
+        return np.array([self._predict_instance(instance, check_input) for instance in X])
 
-    def _predict_instance(self, instance, depth=0):
-        if self.leaf_model is not None:
+    def _predict_instance(self, instance, check=True, depth=0):
+        if getattr(self, 'leaf_model', None):
             # Use leaf model if this is a leaf
-            return self.leaf_model.predict(instance.reshape(1, -1))[0]
+            return self.leaf_model.predict(instance.reshape(1, -1), check_input=check)[0]
 
         # Check if we've exhausted the split sequence or reached the end
         if depth >= len(self.split_sequence):
@@ -100,17 +120,22 @@ class RecursiveCustomDecisionTreeClassifier(DecisionTreeClassifier):
             return self.right_tree._predict_instance(np.delete(instance, split_index), depth + 1)
 
     def visualize(self, feature_names=None, class_names=None) -> Source:
-        if len(class_names)<2:
-            class_names=None
-        if not self.leaf_model and not self.right_tree and not self.left_tree:
+        if len(class_names) < 2:
+            class_names = None
+
+            #not getattr(self, 'right_tree', None)
+            #not getattr(self, 'left_tree', None)
+        if not getattr(self, 'leaf_model', None) and \
+                not getattr(self, 'right_tree', None) and \
+                not getattr(self, 'left_tree', None):
             raise RuntimeError("The Classifier is not fitted!")
         fill = '' if class_names is None else ', filled'
         dot = 'digraph Tree {\n' + \
               f'node [shape=box, style="rounded{fill}", color="black", fontname="helvetica"] ;\n' + \
               'edge [fontname="helvetica"] ;\n'
         # print(self.build_dot(feature_names, class_names, node=0))
-        colorMap=None
-        if len(class_names)>1:
+        colorMap = None
+        if len(class_names) > 1:
             new_colors = generate_distinct_colors_hex(len(class_names))
             colorMap = {class_names[i]: new_colors[i] for i in range(len(class_names))}
         dot_str, node = self.build_dot(feature_names, class_names, node=0, color_map=colorMap)
@@ -128,38 +153,39 @@ class RecursiveCustomDecisionTreeClassifier(DecisionTreeClassifier):
         impurity = self.impurity  # Impurity at this node
         samples = self.n_node_samples  # Number of samples at this node
 
-        if self.leaf_model:
+        if getattr(self, 'leaf_model', None):
             class_index = np.argmax(self.value)  # Find the majority class index
-            class_name = class_names[class_index] if len(class_names)>1 else f"Class {class_index}"
+            class_name = class_names[class_index] if len(class_names) > 1 else f"Class {class_index}"
         else:
             class_index = np.argmax(self.value)  # Get the majority class index
-            class_name = class_names[class_index] if len(class_names)>1 else f"Class {class_index}"
+            class_name = class_names[class_index] if len(class_names) > 1 else f"Class {class_index}"
         # Label for the internal node
         label = f'<{feature_name} ({self.split_index}) &le; {threshold:.2f}<br/>gini = {impurity:.3f}<br/>samples = {samples}>'
 
         my_fill = f'"{color_map[class_name]}"' if color_map else '"#fdfcff"'
         dot_str += f'{node} [label={label}, fillcolor={my_fill}] ;\n'
         new_features = [feature_names[i] for i in range(len(feature_names)) if i != self.split_index]
-        new_node=0
-        if self.left_tree:
+        new_node = 0
+        if getattr(self, 'left_tree', None):
             # Recursively build left and right trees
-            left_dot_str, tree_size = self.left_tree.build_dot(new_features, class_names, node=node+1, color_map=color_map)
+            left_dot_str, tree_size = self.left_tree.build_dot(new_features, class_names, node=node + 1,
+                                                               color_map=color_map)
             # Add the left and right children to the parent node
-            dot_str += f'{node} -> {node+1};\n'
+            dot_str += f'{node} -> {node + 1};\n'
             # Add the left and right subtrees to the DOT string
             dot_str += left_dot_str
             # Update the node index for the next call
-            new_node = node+tree_size
+            new_node = node + tree_size
 
-        if self.right_tree:
-            right_child = new_node+1
-            right_dot_str, tree_size = self.right_tree.build_dot(new_features, class_names, node=right_child, color_map=color_map)
+        if getattr(self, 'right_tree', None):
+            right_child = new_node + 1
+            right_dot_str, tree_size = self.right_tree.build_dot(new_features, class_names, node=right_child,
+                                                                 color_map=color_map)
             dot_str += right_dot_str
             dot_str += f'{node} -> {right_child};\n'
-            new_node = right_child+tree_size
 
         # If this is a leaf node, generate a label with class distribution for the leaf
-        if self.leaf_model:
+        if getattr(self, 'leaf_model', None):
             # Visualize the entire leaf model
             new_dot, tree_size = self.visualize_leaf_tree(node, feature_names, class_names, color_map)
             # dot_str += f'{node} -> {right_child};\n'
@@ -186,9 +212,11 @@ class RecursiveCustomDecisionTreeClassifier(DecisionTreeClassifier):
                     f'class = "{class_name}"> fillcolor="{color}"',
                     leaf_dot
                 )
+
         def shift_index(match):
             index = int(match.group(1))
             return f" {index + node}"
+
         # Filter out lines that do not start with a node or edge definition
         filtered_lines = []
         for line in leaf_dot.splitlines():

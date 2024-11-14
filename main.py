@@ -4,12 +4,9 @@ import random
 import graphviz
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score
-from sklearn import tree
-import matplotlib.pyplot as plt
+from sklearn.utils.estimator_checks import check_estimator
 
-from CustomDecisionTreeClassifier import CustomDecisionTreeClassifier
 from RecursiveCustomDecisionTreeClassifier import RecursiveCustomDecisionTreeClassifier
 from helpers import save_dot_to_file
 
@@ -26,7 +23,7 @@ y = iris.target  # целевые метки
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=seed)
 
 # Создаем модель дерева решений
-seq=[1]
+seq=[0, 2]
 clf = RecursiveCustomDecisionTreeClassifier(random_state=seed,split_sequence=seq, max_depth=1)
 
 # Обучаем модель на обучающих данных
