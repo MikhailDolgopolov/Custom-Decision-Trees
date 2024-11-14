@@ -23,7 +23,7 @@ y = iris.target  # целевые метки
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=seed)
 
 # Создаем модель дерева решений
-seq=[0, 3]
+seq=[0,3, 1]
 clf = RecursiveCustomDecisionTreeClassifier(random_state=seed,split_sequence=seq, max_depth=1)
 
 # Обучаем модель на обучающих данных
