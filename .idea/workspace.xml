@@ -8,15 +8,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="eda12836-d498-4391-a761-80f682c741b3" name="Changes" comment="Almost right">
+    <list default="true" id="eda12836-d498-4391-a761-80f682c741b3" name="Changes" comment="passed Check_Estimator">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/RecursiveCustomDecisionTreeClassifier.py" beforeDir="false" afterPath="$PROJECT_DIR$/RecursiveCustomDecisionTreeClassifier.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iris_tree_s5_[1]-93" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/iris_tree_s5_[1]-93.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/iris_tree_s5_[1_0]-80" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/iris_tree_s5_[1_0]-80.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/iris_tree_s5_[1_0]-93" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/iris_tree_s5_[1_0]-93.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/helpers.py" beforeDir="false" afterPath="$PROJECT_DIR$/helpers.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -113,7 +108,15 @@
       <option name="project" value="LOCAL" />
       <updated>1731592262178</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="passed Check_Estimator">
+      <option name="closed" value="true" />
+      <created>1731603699226</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1731603699227</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -129,6 +132,7 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Almost right" />
-    <option name="LAST_COMMIT_MESSAGE" value="Almost right" />
+    <MESSAGE value="passed Check_Estimator" />
+    <option name="LAST_COMMIT_MESSAGE" value="passed Check_Estimator" />
   </component>
 </project>

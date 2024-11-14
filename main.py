@@ -23,7 +23,7 @@ y = iris.target  # целевые метки
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=seed)
 
 # Создаем модель дерева решений
-seq=[0, 2]
+seq=[0, 3]
 clf = RecursiveCustomDecisionTreeClassifier(random_state=seed,split_sequence=seq, max_depth=1)
 
 # Обучаем модель на обучающих данных
@@ -37,7 +37,10 @@ accuracy = accuracy_score(y_test, y_pred)
 print(f'Точность модели: {accuracy * 100:.2f}%')
 
 print(iris.feature_names)
+#iris.feature_names, iris.target_names
 graph = clf.visualize(iris.feature_names, iris.target_names)
 
 # Render the tree (display it)
-graph.render(f"iris_tree_s{seed}_[{'_'.join(map(str, seq))}]-{round(accuracy * 100)}", format="png", view=True)
+graph.render(
+    f"iris_tree_s{seed}_[{'_'.join(map(str, seq))}]-{round(accuracy * 100)}",
+    format="png", cleanup=True)
