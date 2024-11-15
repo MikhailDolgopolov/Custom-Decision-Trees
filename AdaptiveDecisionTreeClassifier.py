@@ -75,13 +75,13 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
         self.imputer = SimpleImputer(strategy='median')
         if isinstance(raw_X, pd.DataFrame):
             if raw_X.isna().any().any():
-                print("Handling NaN values with imputation.")
+                print("Handling NaN values with median imputation.")
                 return self.imputer.fit_transform(raw_X)
             return raw_X.to_numpy()
         else:
             X:np.ndarray = np.asarray(raw_X)
             if np.any(np.isnan(X)):
-                print("Handling NaN values with imputation.")
+                print("Handling NaN values with median imputation.")
                 return self.imputer.fit_transform(X)
             return X
 
@@ -276,5 +276,7 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
                 filtered_lines.append(shifted_line)
         filtered_dot = "\n".join(filtered_lines)
 
-        size = getattr(self.leaf_model, "tree_.node_count", 1)
+        size = 1
+        if hasattr(self.leaf_model, "tree_"):
+            size = self.leaf_model.tree_.node_count
         return filtered_dot, nodes+size
