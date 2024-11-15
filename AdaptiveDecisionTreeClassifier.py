@@ -1,4 +1,5 @@
 import re
+from types import NoneType
 from typing import List, Union, Optional
 import graphviz
 import pandas as pd
@@ -22,6 +23,8 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
             **kwargs
     ) -> None:
         self.handle_nans = handle_nans
+        if isinstance(feature_names, np.ndarray):
+            feature_names = feature_names.tolist()
         self.feature_names = feature_names
         if max_depth is not None:
             if not isinstance(max_depth, int) or max_depth <= 0:
@@ -31,34 +34,32 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
         self.split_feature_order = [] if split_feature_order is None else split_feature_order
 
         accepted_lists = (list, np.ndarray, pd.Index)
-        if feature_names is not None and not isinstance(feature_names, accepted_lists):
-            raise ValueError(f"Accepted types for feature_names are {', '.join(map(str, accepted_lists))}.")
+        if self.feature_names is not None and not isinstance(feature_names, (*accepted_lists, NoneType)):
+            raise ValueError(f"Accepted types for feature_names are {', '.join(map(str, accepted_lists))}, not {type(self.feature_names)}.")
 
-        if isinstance(feature_names, np.ndarray):
-            feature_names = feature_names.tolist()
+        if len(self.split_feature_order)>0:
+            if all(isinstance(s, str) for s in self.split_feature_order):
+                if self.feature_names is None:
+                    raise ValueError("split_feature_order contains feature names, but no feature_names were provided.")
+                if len(self.split_feature_order) > len(feature_names):
+                    raise ValueError("Split sequence cannot be longer than the number of features you have.")
+                missing_columns = [name for name in self.split_feature_order if
+                                   isinstance(name, str) and name not in self.feature_names]
+                if missing_columns:
+                    raise ValueError(f"Columns {missing_columns} not found in the feature list you provided.")
+                self.split_feature_order = [
+                    list(feature_names).index(name) if isinstance(name, str) else name
+                    for name in self.split_feature_order
+                ]
 
-        if all(isinstance(s, str) for s in self.split_feature_order):
-            if feature_names is None:
-                raise ValueError("split_feature_order contains feature names, but no feature_names were provided.")
-            if len(self.split_feature_order) > len(feature_names):
-                raise ValueError("Split sequence cannot be longer than the number of features you have.")
-            missing_columns = [name for name in self.split_feature_order if
-                               isinstance(name, str) and name not in feature_names]
-            if missing_columns:
-                raise ValueError(f"Columns {missing_columns} not found in the feature list you provided.")
-            self.split_feature_order = [
-                list(feature_names).index(name) if isinstance(name, str) else name
-                for name in self.split_feature_order
-            ]
+            elif all(isinstance(i, int) for i in self.split_feature_order):
+                if len(self.split_feature_order) != len(set(self.split_feature_order)):
+                    raise ValueError("Provided split sequence contains duplicate indices.")
+                if self.feature_names is not None and any(i >= len(self.feature_names) for i in self.split_feature_order):
+                    raise ValueError("Provided split sequence contains invalid indices (out of bounds).")
 
-        elif all(isinstance(i, int) for i in self.split_feature_order):
-            if len(self.split_feature_order) != len(set(self.split_feature_order)):
-                raise ValueError("Provided split sequence contains duplicate indices.")
-            if any(i >= len(feature_names) for i in self.split_feature_order):
-                raise ValueError("Provided split sequence contains invalid indices (out of bounds).")
-
-        elif any(isinstance(k, (int, str)) for k in self.split_feature_order):
-            raise InvalidParameterError("Incorrect format of split_feature_order. Use either exclusively indices, or exclusively feature names.")
+            elif any(isinstance(k, (int, str)) for k in self.split_feature_order):
+                raise InvalidParameterError("Incorrect format of split_feature_order. Use either exclusively indices, or exclusively feature names.")
 
         max_depth -= len(self.split_feature_order)
         super().__init__(max_depth=max_depth, **kwargs)
@@ -94,7 +95,7 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
         if len(y) == 0:
             if parent_value is not None:
                 majority_class = np.argmax(parent_value)  # Most common class from parent's distribution
-                self.leaf_model = lambda X: np.full((len(X),), majority_class)  # Returns majority class for each input
+                self.leaf_model = lambda X: np.full((len(X),), majority_class)
                 self.value = parent_value
             return self
 
@@ -103,17 +104,13 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
 
         self.X_, self.y_ = X, y
         if len(y.shape) > 1 and y.shape[1] > 1:
-            # If y is multi-output, set n_outputs_ to the number of columns in y
-            self.n_outputs_ = y.shape[1]
+            raise NotImplementedError("Multi-output prediction is not supported by this estimator.")
         else:
-            # Otherwise, it's a single-output problem
             self.n_outputs_ = 1
         self.classes_ = np.unique(y)
         self.n_classes_ = len(self.classes_)
 
-        # Check if we've exhausted the split sequence
         if len(self.split_feature_order) == 0 or self.depth >= len(self.split_feature_order):
-            # At leaf, train a regular tree on remaining data
             self.leaf_model = DecisionTreeClassifier(max_depth=self.max_depth, **self.__kwargs)
             self.leaf_model.fit(X, y)
             self.impurity = self._calculate_impurity(y)
@@ -123,40 +120,34 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
             self.threshold = self.leaf_model.tree_.threshold[0]
             return self
 
-        # Train a single-feature model to find the best threshold
+        #Model to find the best threshold
         single_feature_model = DecisionTreeClassifier(
             criterion=self.criterion, max_depth=1, random_state=self.random_state)
         single_feature_model.fit(X[:, [self.split_index]], y)
 
-        # Retrieve the threshold for this split
         self.threshold = single_feature_model.tree_.threshold[0]
 
-        # Split data into left and right based on the threshold
         left_mask = X[:, self.split_index] <= self.threshold
         right_mask = ~left_mask
-
-        X_left = X[left_mask]
-        X_right = X[right_mask]
 
         # Recursively train left and right subtrees
         self.left_tree = AdaptiveDecisionTreeClassifier(
             self.split_feature_order[1:], feature_names=self.feature_names, max_depth =self.max_depth - 1, **self.__kwargs)
-        self.left_tree.fit(X_left, y[left_mask],
+        self.left_tree.fit(X[left_mask], y[left_mask],
                            depth=self.depth + 1, parent_value=getattr(self, 'value', None))
 
         self.right_tree = AdaptiveDecisionTreeClassifier(
             self.split_feature_order[1:], feature_names=self.feature_names, max_depth =self.max_depth - 1, **self.__kwargs)
-        self.right_tree.fit(X_right, y[right_mask],
+        self.right_tree.fit(X[right_mask], y[right_mask],
                             depth=self.depth + 1, parent_value=getattr(self, 'value', None))
 
-        self.impurity = self._calculate_impurity(y)  # Impurity for internal node
-        self.n_node_samples = len(y)  # Number of samples at this node
+        self.impurity = self._calculate_impurity(y)
+        self.n_node_samples = len(y)
         self.value = np.bincount(y)  # Class distribution at this node
 
         return self
 
     def _calculate_impurity(self, y):
-        # Gini impurity calculation
         class_counts = np.bincount(y)
         probabilities = class_counts / len(y)
         impurity = 1 - np.sum(probabilities ** 2)
@@ -165,22 +156,17 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
     def predict(self, X, check_input=True):
         if self.handle_nans:
             X = self.inpute(X)
-        # Iterate through each sample and predict recursively
         return np.array([self._predict_instance(instance, check_input) for instance in X])
 
     def _predict_instance(self, instance, check=True, depth=0):
-        # Check if a leaf model is defined
         if getattr(self, 'leaf_model', None):
             if callable(self.leaf_model):
-                # If the leaf model is a callable function, call it and return the class prediction
                 prediction = self.leaf_model(np.array([instance]))[0]
                 return prediction
             else:
-                # Use the leaf model's predict method if it's a fitted model
                 prediction = self.leaf_model.predict(instance.reshape(1, -1), check_input=check)[0]
                 return prediction
 
-        # If we haven't reached a leaf, recursively predict by traversing the tree
         if depth >= len(self.split_feature_order):
             return super().predict(instance.reshape(1, -1))[0]
 
@@ -221,8 +207,8 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
         except:
             feature_name = f"Feature {self.split_index}"
         threshold = self.threshold
-        impurity = self.impurity  # Impurity at this node
-        samples = self.n_node_samples  # Number of samples at this node
+        impurity = self.impurity
+        samples = self.n_node_samples
 
         class_index = np.argmax(self.value)  # Get the majority class index
         try:
@@ -230,11 +216,8 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
         except:
             class_name = f"Class {class_index}"
 
-
-        # Label for the internal node
         label = (f'<{feature_name} &le; {threshold:.2f}<br/>gini = {impurity:.3f}<br/>'
                  f'samples = {samples}<br/> class="{class_name}">')
-        # print(label)
 
         my_fill = f'"{color_map[class_name]}"' if color_map else '"#fdfcff"'
         dot_str += f'{nodes} [label={label}, fillcolor={my_fill}] ;\n'
@@ -242,13 +225,14 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
         new_features = feature_names
         new_quantity = 1
         if getattr(self, 'left_tree', None):
-            # Recursively build left and right trees
+            # Recursively build the left tree
             left_dot_str, new_quantity = self.left_tree.build_dot(new_features, class_names, nodes=nodes,
                                                                color_map=color_map)
-            # Add the left and right children to the parent node
+
             dot_str += f'{nodes-1} -> {nodes};\n'
             dot_str += left_dot_str
         if getattr(self, 'right_tree', None):
+            # Recursively build the right tree
             right_child = new_quantity+1
             right_dot_str, new_quantity = self.right_tree.build_dot(new_features, class_names, nodes=right_child,
                                                                  color_map=color_map)
@@ -256,7 +240,6 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
             dot_str += f'{nodes-1} -> {right_child};\n'
             nodes = new_quantity
 
-        # If this is a leaf node, generate a label with class distribution for the leaf
         if getattr(self, 'leaf_model', None):
             # Visualize the entire leaf model
             new_dot, new_quantity = self.visualize_leaf_tree(nodes, feature_names, class_names, color_map)
@@ -270,11 +253,10 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
             feature_names=feature_names,
             class_names=class_names,
             rounded=True,
-            special_characters=True  # Handle special characters in feature names
+            special_characters=True
         )
 
         if class_colors:
-            # Step 3: Use regex to apply colors to each node based on class
             for class_name, color in class_colors.items():
                 leaf_dot = re.sub(
                     f'class *= *{class_name}>',
@@ -286,17 +268,13 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
             index = int(match.group(1))
             return f" {index + nodes-1}"
 
-        # Filter out lines that do not start with a node or edge definition
         filtered_lines = []
         for line in leaf_dot.splitlines():
             # Keep only lines that define a node or edge (node index or node -> connection)
             if '->' in line or re.match(r'\d+ +(?:\[.*\])*', line):
                 shifted_line = re.sub(r'(\b\d+\b)(?=\s*[\[;]| ->)', shift_index, line).strip()
-                # if not '->' in shifted_line:
-                #     print(shifted_line)
-                # print('\n')
                 filtered_lines.append(shifted_line)
-        # Join the filtered lines back together into a DOT string
         filtered_dot = "\n".join(filtered_lines)
 
-        return filtered_dot, nodes+self.leaf_model.tree_.node_count
+        size = getattr(self.leaf_model, "tree_.node_count", 1)
+        return filtered_dot, nodes+size

@@ -8,11 +8,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="eda12836-d498-4391-a761-80f682c741b3" name="Changes" comment="Error handling">
+    <list default="true" id="eda12836-d498-4391-a761-80f682c741b3" name="Changes" comment="Clear wording">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/AdaptiveDecisionTreeClassifier.py" beforeDir="false" afterPath="$PROJECT_DIR$/AdaptiveDecisionTreeClassifier.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/wine.py" beforeDir="false" afterPath="$PROJECT_DIR$/wine.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -29,6 +28,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "MikhailDolgopolov"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/MikhailDolgopolov/Custom-Decision-Trees.git",
+    "accountId": "8d7eeb90-8f50-449d-9040-2eb163000c85"
+  }
+}]]></component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 2
 }</component>
@@ -176,7 +187,15 @@
       <option name="project" value="LOCAL" />
       <updated>1731670563846</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="Clear wording">
+      <option name="closed" value="true" />
+      <created>1731677154062</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1731677154063</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -197,6 +216,7 @@
     <MESSAGE value="Classes missing but colored in default leaf nodes" />
     <MESSAGE value="Working fine" />
     <MESSAGE value="Error handling" />
-    <option name="LAST_COMMIT_MESSAGE" value="Error handling" />
+    <MESSAGE value="Clear wording" />
+    <option name="LAST_COMMIT_MESSAGE" value="Clear wording" />
   </component>
 </project>
