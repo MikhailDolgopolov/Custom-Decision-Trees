@@ -7,12 +7,13 @@ from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 
 from AdaptiveDecisionTreeClassifier import AdaptiveDecisionTreeClassifier
+dataset_path = "C:/Users/Mikhail23/.cache/kagglehub/datasets/uciml/red-wine-quality-cortez-et-al-2009/versions/2"
+if not os.path.exists(dataset_path):
+    dataset_path = kagglehub.dataset_download("uciml/red-wine-quality-cortez-et-al-2009")
 
-path = kagglehub.dataset_download("uciml/red-wine-quality-cortez-et-al-2009")
-
-files = os.listdir(path)
-csv_file = [f for f in files if f.endswith('.csv')][0]  # Select the first CSV file
-df = pd.read_csv(os.path.join(path, csv_file))
+files = os.listdir(dataset_path)
+csv_file = [f for f in files if f.endswith('.csv')][0]
+df = pd.read_csv(os.path.join(dataset_path, csv_file))
 
 conditions = [
     (df['quality'] <= 5),
@@ -43,8 +44,8 @@ seed = 42
 # Split dataset into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=seed)
 
-seq=[1]
-d = -1
+seq=["clow"]
+d = 4
 my_classifier = AdaptiveDecisionTreeClassifier(
     split_feature_order=seq, feature_names=X.columns, max_depth=d)
 my_classifier.fit(X_train, y_train)

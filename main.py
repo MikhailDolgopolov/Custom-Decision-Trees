@@ -7,8 +7,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.utils.estimator_checks import check_estimator
 
-from RecursiveCustomDecisionTreeClassifier import AdaptiveDecisionTreeClassifier
-# check_estimator(RecursiveCustomDecisionTreeClassifier())
+from AdaptiveDecisionTreeClassifier import AdaptiveDecisionTreeClassifier
+check_estimator(AdaptiveDecisionTreeClassifier())
 # Загружаем набор данных Ирис
 iris = load_iris()
 

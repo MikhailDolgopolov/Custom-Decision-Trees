@@ -8,9 +8,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="eda12836-d498-4391-a761-80f682c741b3" name="Changes" comment="Working fine">
+    <list default="true" id="eda12836-d498-4391-a761-80f682c741b3" name="Changes" comment="Error handling">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/RecursiveCustomDecisionTreeClassifier.py" beforeDir="false" afterPath="$PROJECT_DIR$/AdaptiveDecisionTreeClassifier.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/AdaptiveDecisionTreeClassifier.py" beforeDir="false" afterPath="$PROJECT_DIR$/AdaptiveDecisionTreeClassifier.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/wine.py" beforeDir="false" afterPath="$PROJECT_DIR$/wine.py" afterDir="false" />
     </list>
@@ -52,7 +52,7 @@
     "settings.editor.selected.configurable": "preferences.pluginManager"
   }
 }]]></component>
-  <component name="RunManager" selected="Python.wine">
+  <component name="RunManager" selected="Python.main">
     <configuration name="main" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="TreeExperiments" />
       <option name="ENV_FILES" value="" />
@@ -168,7 +168,15 @@
       <option name="project" value="LOCAL" />
       <updated>1731658673707</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Error handling">
+      <option name="closed" value="true" />
+      <created>1731670563846</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1731670563846</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -188,6 +196,7 @@
     <MESSAGE value="Not entirely correct graphs" />
     <MESSAGE value="Classes missing but colored in default leaf nodes" />
     <MESSAGE value="Working fine" />
-    <option name="LAST_COMMIT_MESSAGE" value="Working fine" />
+    <MESSAGE value="Error handling" />
+    <option name="LAST_COMMIT_MESSAGE" value="Error handling" />
   </component>
 </project>
