@@ -1,7 +1,9 @@
 import re
 
 import graphviz
+import pandas as pd
 from graphviz import Digraph, Source
+from sklearn.impute import SimpleImputer
 from sklearn.tree import DecisionTreeClassifier, export_graphviz
 import numpy as np
 from sklearn.utils import check_X_y
@@ -10,7 +12,9 @@ from helpers import generate_distinct_colors_hex
 
 
 class RecursiveCustomDecisionTreeClassifier(DecisionTreeClassifier):
-    def __init__(self, split_sequence=None, **kwargs):
+    def __init__(self, split_sequence=None, handle_nans=True, **kwargs):
+        self.handle_nans = handle_nans
+
         if split_sequence is None:
             split_sequence = []
         self.split_sequence = split_sequence  # List of feature indices for splits
@@ -21,14 +25,35 @@ class RecursiveCustomDecisionTreeClassifier(DecisionTreeClassifier):
     @property
     def tree_(self):
         if getattr(self, 'leaf_model', None):
+            if callable(self.leaf_model):
+                return None
             return self.leaf_model.tree_
         else:
             return getattr(self.left_tree, 'tree_', None)
 
+    def inpute(self, raw_X):
+        self.imputer = SimpleImputer(strategy='most_frequent')
+        # Check for NaN values and handle them if needed
+        if isinstance(raw_X, pd.DataFrame):
+            if raw_X.isna().any().any():  # Check if any NaN values are present
+                print("Handling NaN values with imputation.")
+                return self.imputer.fit_transform(raw_X)
+            return raw_X.to_numpy()
+        else:
+            # For numpy array or lists, convert to numpy and check for NaNs
+            X:np.ndarray = np.asarray(raw_X)
+            if np.any(np.isnan(X)):
+                print("Handling NaN values with imputation.")
+                return self.imputer.fit_transform(X)
+            return X
+
     def fit(self, X, y, **kwargs):
         self.depth = kwargs.get('depth', 0)
 
-        if self.depth == 0 and len(X)==0:
+
+
+        X, y = check_X_y(X, y, accept_sparse=False)
+        if self.depth == 0 and X.shape[0] == 0:
             raise ValueError("Training data cannot be empty!")
         parent_value:list|None = kwargs.get("parent_value", None)
         if len(y) == 0:
@@ -38,6 +63,8 @@ class RecursiveCustomDecisionTreeClassifier(DecisionTreeClassifier):
                 self.value = parent_value
             return self
 
+        if self.handle_nans:
+            X = self.inpute(X)
 
         self.X_, self.y_ = X, y
         if len(y.shape) > 1 and y.shape[1] > 1:
@@ -75,9 +102,6 @@ class RecursiveCustomDecisionTreeClassifier(DecisionTreeClassifier):
         left_mask = X[:, self.split_index] <= self.threshold
         right_mask = ~left_mask
 
-        # X_left = np.delete(X[left_mask], self.split_index, axis=1)
-        # X_right = np.delete(X[right_mask], self.split_index, axis=1)
-
         X_left = X[left_mask]
         X_right = X[right_mask]
 
@@ -104,6 +128,8 @@ class RecursiveCustomDecisionTreeClassifier(DecisionTreeClassifier):
         return impurity
 
     def predict(self, X, check_input=True):
+        if self.handle_nans:
+            X = self.inpute(X)
         # Iterate through each sample and predict recursively
         return np.array([self._predict_instance(instance, check_input) for instance in X])
 
@@ -231,10 +257,9 @@ class RecursiveCustomDecisionTreeClassifier(DecisionTreeClassifier):
         for line in leaf_dot.splitlines():
             # Keep only lines that define a node or edge (node index or node -> connection)
             if '->' in line or re.match(r'\d+ +(?:\[.*\])*', line):
-                # print(line)
                 shifted_line = re.sub(r'(\b\d+\b)(?=\s*[\[;]| ->)', shift_index, line).strip()
-                if not '->' in shifted_line:
-                    print(shifted_line)
+                # if not '->' in shifted_line:
+                #     print(shifted_line)
                 # print('\n')
                 filtered_lines.append(shifted_line)
         # Join the filtered lines back together into a DOT string
