@@ -1,46 +1,80 @@
 import re
-
+from typing import List, Union, Optional
 import graphviz
 import pandas as pd
-from graphviz import Digraph, Source
+from graphviz import Source
 from sklearn.impute import SimpleImputer
 from sklearn.tree import DecisionTreeClassifier, export_graphviz
 import numpy as np
 from sklearn.utils import check_X_y
+from sklearn.utils._param_validation import InvalidParameterError
 
 from helpers import generate_distinct_colors_hex
 
 
-class RecursiveCustomDecisionTreeClassifier(DecisionTreeClassifier):
-    def __init__(self, split_sequence=None, handle_nans=True, **kwargs):
+class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
+    def __init__(
+            self,
+            split_feature_order: Optional[List[Union[int, str]]] = None,
+            handle_nans: bool = True,
+            max_depth: Optional[int] = None,
+            feature_names: Optional[List[str]] = None,
+            **kwargs
+    ) -> None:
         self.handle_nans = handle_nans
+        self.feature_names = feature_names
+        if max_depth is not None:
+            if not isinstance(max_depth, int) or max_depth <= 0:
+                raise InvalidParameterError(
+                    f"The 'max_depth' parameter must be an int in the range [1, inf), got {max_depth} instead.")
+        self.max_depth = max_depth
+        self.split_sequence = [] if split_feature_order is None else split_feature_order
 
-        if split_sequence is None:
-            split_sequence = []
-        self.split_sequence = split_sequence  # List of feature indices for splits
-        super().__init__(**kwargs)
+        accepted_lists = (list, np.ndarray, pd.Index)
+        if feature_names is not None and not isinstance(feature_names, accepted_lists):
+            raise ValueError(f"Accepted types for feature_names are {', '.join(map(str, accepted_lists))}.")
+
+        if isinstance(feature_names, np.ndarray):
+            feature_names = feature_names.tolist()
+
+        if all(isinstance(s, str) for s in self.split_sequence):
+            if feature_names is None:
+                raise ValueError("split_sequence contains feature names, but no feature_names were provided.")
+            if len(self.split_sequence) > len(feature_names):
+                raise ValueError("Split sequence cannot be longer than the number of features you have.")
+            missing_columns = [name for name in self.split_sequence if
+                               isinstance(name, str) and name not in feature_names]
+            if missing_columns:
+                raise ValueError(f"Columns {missing_columns} not found in the feature list you provided.")
+            self.split_sequence = [
+                list(feature_names).index(name) if isinstance(name, str) else name
+                for name in self.split_sequence
+            ]
+
+        if all(isinstance(i, int) for i in self.split_sequence):
+            if len(self.split_sequence) != len(set(self.split_sequence)):
+                raise ValueError("Provided split sequence contains duplicate indices.")
+            if any(i >= len(feature_names) for i in self.split_sequence):
+                raise ValueError("Provided split sequence contains invalid indices (out of bounds).")
+
+        max_depth -= len(self.split_sequence)
+        super().__init__(max_depth=max_depth, **kwargs)
         self.__kwargs = kwargs
-        if len(split_sequence) > 0: self.split_index = split_sequence[0]
+        if len(self.split_sequence) > 0:
+            self.split_index = self.split_sequence[0]
 
     @property
     def tree_(self):
-        if getattr(self, 'leaf_model', None):
-            if callable(self.leaf_model):
-                return None
-            return self.leaf_model.tree_
-        else:
-            return getattr(self.left_tree, 'tree_', None)
+        raise ValueError("This estimator does not provide a full tree structure, because it is recursive.")
 
     def inpute(self, raw_X):
         self.imputer = SimpleImputer(strategy='most_frequent')
-        # Check for NaN values and handle them if needed
         if isinstance(raw_X, pd.DataFrame):
             if raw_X.isna().any().any():  # Check if any NaN values are present
                 print("Handling NaN values with imputation.")
                 return self.imputer.fit_transform(raw_X)
             return raw_X.to_numpy()
         else:
-            # For numpy array or lists, convert to numpy and check for NaNs
             X:np.ndarray = np.asarray(raw_X)
             if np.any(np.isnan(X)):
                 print("Handling NaN values with imputation.")
@@ -49,8 +83,6 @@ class RecursiveCustomDecisionTreeClassifier(DecisionTreeClassifier):
 
     def fit(self, X, y, **kwargs):
         self.depth = kwargs.get('depth', 0)
-
-
 
         X, y = check_X_y(X, y, accept_sparse=False)
         if self.depth == 0 and X.shape[0] == 0:
@@ -75,17 +107,15 @@ class RecursiveCustomDecisionTreeClassifier(DecisionTreeClassifier):
             self.n_outputs_ = 1
         self.classes_ = np.unique(y)
         self.n_classes_ = len(self.classes_)
-        if len(self.split_sequence)>self.n_classes_:
-            raise ValueError("Split sequence cannot be longer than the number of features you have.")
 
         # Check if we've exhausted the split sequence
         if len(self.split_sequence) == 0 or self.depth >= len(self.split_sequence):
             # At leaf, train a regular tree on remaining data
-            self.leaf_model = DecisionTreeClassifier(**self.__kwargs)
+            self.leaf_model = DecisionTreeClassifier(max_depth=self.max_depth, **self.__kwargs)
             self.leaf_model.fit(X, y)
-            self.impurity = self._calculate_impurity(y)  # Calculate impurity for leaf node
-            self.n_node_samples = len(y)  # Number of samples at the leaf
-            self.value = np.bincount(y)  # Class distribution at the leaf
+            self.impurity = self._calculate_impurity(y)
+            self.n_node_samples = len(y)
+            self.value = np.bincount(y)
             self.split_index = self.leaf_model.tree_.feature[0]
             self.threshold = self.leaf_model.tree_.threshold[0]
             return self
@@ -106,13 +136,15 @@ class RecursiveCustomDecisionTreeClassifier(DecisionTreeClassifier):
         X_right = X[right_mask]
 
         # Recursively train left and right subtrees
-        self.left_tree = RecursiveCustomDecisionTreeClassifier(
-            self.split_sequence[1:], **self.__kwargs)
-        self.left_tree.fit(X_left, y[left_mask], depth=self.depth + 1, parent_value=getattr(self, 'value', None))
+        self.left_tree = AdaptiveDecisionTreeClassifier(
+            self.split_sequence[1:], feature_names=self.feature_names, max_depth = self.max_depth-1, **self.__kwargs)
+        self.left_tree.fit(X_left, y[left_mask],
+                           depth=self.depth + 1, parent_value=getattr(self, 'value', None))
 
-        self.right_tree = RecursiveCustomDecisionTreeClassifier(
-            self.split_sequence[1:], **self.__kwargs)
-        self.right_tree.fit(X_right, y[right_mask], depth=self.depth + 1, parent_value=getattr(self, 'value', None))
+        self.right_tree = AdaptiveDecisionTreeClassifier(
+            self.split_sequence[1:], feature_names=self.feature_names, max_depth = self.max_depth-1, **self.__kwargs)
+        self.right_tree.fit(X_right, y[right_mask],
+                            depth=self.depth + 1, parent_value=getattr(self, 'value', None))
 
         self.impurity = self._calculate_impurity(y)  # Impurity for internal node
         self.n_node_samples = len(y)  # Number of samples at this node
@@ -156,6 +188,8 @@ class RecursiveCustomDecisionTreeClassifier(DecisionTreeClassifier):
             return self.right_tree._predict_instance(instance, depth=depth + 1)
 
     def visualize(self, feature_names=None, class_names=None) -> Source:
+        if feature_names is None:
+            feature_names = self.feature_names
         if class_names is not None and len(class_names) < 2:
             class_names = None
         if not getattr(self, 'leaf_model', None) and \
@@ -188,7 +222,6 @@ class RecursiveCustomDecisionTreeClassifier(DecisionTreeClassifier):
         samples = self.n_node_samples  # Number of samples at this node
 
         class_index = np.argmax(self.value)  # Get the majority class index
-        # print(self.value)
         try:
             class_name = class_names[class_index]
         except:
@@ -203,7 +236,6 @@ class RecursiveCustomDecisionTreeClassifier(DecisionTreeClassifier):
         my_fill = f'"{color_map[class_name]}"' if color_map else '"#fdfcff"'
         dot_str += f'{nodes} [label={label}, fillcolor={my_fill}] ;\n'
         nodes+=1
-        # new_features = [feature_names[i] for i in range(len(feature_names)) if i != self.split_index]
         new_features = feature_names
         new_quantity = 1
         if getattr(self, 'left_tree', None):

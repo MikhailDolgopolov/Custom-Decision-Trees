@@ -8,12 +8,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="eda12836-d498-4391-a761-80f682c741b3" name="Changes" comment="Classes missing but colored in default leaf nodes">
-      <change afterPath="$PROJECT_DIR$/wine.py" afterDir="false" />
+    <list default="true" id="eda12836-d498-4391-a761-80f682c741b3" name="Changes" comment="Working fine">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/RecursiveCustomDecisionTreeClassifier.py" beforeDir="false" afterPath="$PROJECT_DIR$/RecursiveCustomDecisionTreeClassifier.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/helpers.py" beforeDir="false" afterPath="$PROJECT_DIR$/helpers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RecursiveCustomDecisionTreeClassifier.py" beforeDir="false" afterPath="$PROJECT_DIR$/AdaptiveDecisionTreeClassifier.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wine.py" beforeDir="false" afterPath="$PROJECT_DIR$/wine.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -161,7 +160,15 @@
       <option name="project" value="LOCAL" />
       <updated>1731611054590</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="Working fine">
+      <option name="closed" value="true" />
+      <created>1731658673707</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1731658673707</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -180,6 +187,7 @@
     <MESSAGE value="passed Check_Estimator" />
     <MESSAGE value="Not entirely correct graphs" />
     <MESSAGE value="Classes missing but colored in default leaf nodes" />
-    <option name="LAST_COMMIT_MESSAGE" value="Classes missing but colored in default leaf nodes" />
+    <MESSAGE value="Working fine" />
+    <option name="LAST_COMMIT_MESSAGE" value="Working fine" />
   </component>
 </project>
