@@ -176,7 +176,7 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
         else:
             return self.right_tree._predict_instance(instance, depth=depth + 1)
 
-    def visualize(self, feature_names=None, class_names=None) -> Source:
+    def visualize(self, feature_names=None, class_names=None, class_colors=None) -> Source:
         if feature_names is None:
             feature_names = self.feature_names
         if class_names is not None and len(class_names) < 2:
@@ -189,11 +189,14 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
         dot = 'digraph Tree {\n' + \
               f'node [shape=box, style="rounded{fill}", color="black", fontname="helvetica"] ;\n' + \
               'edge [fontname="helvetica"] ;\n'
-
+        if class_names is not None and class_colors is not None:
+            if self.n_classes_ != len(class_colors):
+                raise ValueError(f"Wrong number of colors provided. Should be: {self.n_classes_}, got: {len(class_colors)}.")
         colorMap = None
         if class_names is not None and len(class_names) > 1:
-            new_colors = generate_distinct_colors_hex(len(class_names))
-            colorMap = {class_names[i]: new_colors[i] for i in range(len(class_names))}
+            if class_colors is None:
+                class_colors = generate_distinct_colors_hex(len(class_names))
+            colorMap = {class_names[i]: class_colors[i] for i in range(len(class_names))}
         dot_str, node = self.build_dot(feature_names, class_names, nodes=0, color_map=colorMap)
         dot += dot_str
         dot += '\n}'
@@ -205,7 +208,7 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
         try:
             feature_name = feature_names[self.split_index]
         except:
-            feature_name = f"Feature {self.split_index}"
+            feature_name = f"x<SUB>{self.split_index}</SUB>"
         threshold = self.threshold
         impurity = self.impurity
         samples = self.n_node_samples

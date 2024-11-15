@@ -1,8 +1,4 @@
 import colorsys
-import os
-
-from graphviz import Source
-
 
 def save_dot_to_file(dot_data, file_path='iris_tree'):
     with open(file_path, 'w') as file:
