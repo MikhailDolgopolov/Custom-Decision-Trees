@@ -1,6 +1,6 @@
 import re
 from types import NoneType
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Literal
 import graphviz
 import pandas as pd
 from graphviz import Source
@@ -176,7 +176,24 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
         else:
             return self.right_tree._predict_instance(instance, depth=depth + 1)
 
-    def visualize(self, feature_names=None, class_names=None, class_colors=None) -> Source:
+    def export_graphviz(self,
+                        out_file: Optional[str] = None,
+                        max_depth:int = None,
+                        feature_names: Optional[Union[np.ndarray, List[str]]] = None,
+                        class_names: Optional[Union[np.ndarray, List[str]]] = None,
+                        label: Literal['all', 'root', 'none']='all',
+                        filled: bool = False,
+                        class_colors: Optional[Union[np.ndarray, List[str]]] = None,
+                        leaves_parallel: bool = False, #leaves at the bottom
+                        impurity: bool = True,
+                        node_ids: bool = False,
+                        proportion: bool = False,
+                        rotate: bool = False,
+                        rounded: bool = True,
+                        special_characters: bool = False,
+                        precision: int = 3,  #impurity, threshold, value
+                        fontname: str = 'helvetica'
+                        ) -> Optional[str]:
         if feature_names is None:
             feature_names = self.feature_names
         if class_names is not None and len(class_names) < 2:
@@ -185,9 +202,14 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
                 not getattr(self, 'right_tree', None) and \
                 not getattr(self, 'left_tree', None):
             raise RuntimeError("The Classifier is not fitted!")
-        fill = '' if class_names is None else ', filled'
+        style_arr =[]
+        if filled:
+            style_arr.append('filled')
+        if rounded:
+            style_arr.append('rounded')
+        style = ', '.join(style_arr)
         dot = 'digraph Tree {\n' + \
-              f'node [shape=box, style="rounded{fill}", color="black", fontname="helvetica"] ;\n' + \
+              f'node [shape=box, style="{style}", color="black", fontname="{fontname}"] ;\n' + \
               'edge [fontname="helvetica"] ;\n'
         if class_names is not None and class_colors is not None:
             if self.n_classes_ != len(class_colors):
@@ -197,70 +219,176 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
             if class_colors is None:
                 class_colors = generate_distinct_colors_hex(len(class_names))
             colorMap = {class_names[i]: class_colors[i] for i in range(len(class_names))}
-        dot_str, node = self.build_dot(feature_names, class_names, nodes=0, color_map=colorMap)
+        dot_str, node = self.build_dot(nodes=0,
+                                       max_depth=max_depth,
+                                       feature_names=feature_names,
+                                       class_names=class_names,
+                                       label=label,
+                                       filled=filled,
+                                       leaves_parallel=leaves_parallel,
+                                       impurity=impurity,
+                                       node_ids=node_ids,
+                                       proportion=proportion,
+                                       rotate=rotate,
+                                       rounded=rounded,
+                                       special_characters=special_characters,
+                                       precision=precision,
+                                       color_map=colorMap)
         dot += dot_str
         dot += '\n}'
+        if out_file is None:
+            return dot
+        with open(out_file, 'w') as f:
+            f.write(dot)
 
-        return graphviz.Source(dot, filename=None)
-
-    def build_dot(self, feature_names, class_names, nodes=0, color_map=None):
+    def build_dot(self, nodes=0,
+                    max_depth:int = None,
+                    feature_names: Optional[Union[np.ndarray, List[str]]] = None,
+                    class_names: Optional[Union[np.ndarray, List[str]]] = None,
+                    label: Literal['all', 'root', 'none']='all', #no
+                    filled: bool = False,
+                    color_map=None,
+                    leaves_parallel: bool = False, #leaves at the bottom
+                    impurity: bool = True,
+                    node_ids: bool = False,
+                    proportion: bool = False,
+                    rotate: bool = False,
+                    rounded: bool = True,
+                    special_characters: bool = False,
+                    precision: int = 3,  #impurity, threshold, value
+                    ):
         dot_str = ""
+        new_depth=None
+        if isinstance(max_depth, int):
+            new_depth=max_depth-1
         try:
             feature_name = feature_names[self.split_index]
         except:
             feature_name = f"x<SUB>{self.split_index}</SUB>"
-        threshold = self.threshold
-        impurity = self.impurity
-        samples = self.n_node_samples
+        node_threshold = round(self.threshold, precision)
+        node_impurity = round(self.impurity, precision)
+        node_samples = round(self.n_node_samples, precision)
 
-        class_index = np.argmax(self.value)  # Get the majority class index
-        try:
-            class_name = class_names[class_index]
-        except:
-            class_name = f"Class {class_index}"
+        node_class_index = np.argmax(self.value)  # Get the majority class index
+        node_class_name=''
+        if class_names is not None:
+            node_class_name = class_names[node_class_index]
 
-        label = (f'<{feature_name} &le; {threshold:.2f}<br/>gini = {impurity:.3f}<br/>'
-                 f'samples = {samples}<br/> class="{class_name}">')
+        #<br/>gini = {impurity}
+        node_label = '<'
+        if node_ids:
+            node_label += f'node #{nodes}<br/>'
+        node_label += f'{feature_name} &le; {node_threshold}<br/>'
+        if node_impurity:
+            node_label += f'<br/>gini = {node_impurity}'
 
-        my_fill = f'"{color_map[class_name]}"' if color_map else '"#fdfcff"'
-        dot_str += f'{nodes} [label={label}, fillcolor={my_fill}] ;\n'
+        node_label += f'samples = {node_samples}>'
+        if class_names is not None and node_class_name != '':
+            node_label += f'<br/> class="{node_class_name}'
+        node_label+='>'
+
+        my_fill = f'"{color_map[node_class_name]}"' if color_map else '"#fdfcff"'
+        node_def = f'{nodes} [label={node_label}'
+        node_def += f', fillcolor={my_fill}'
+        node_def += '] ;'
+        print(node_def)
+        dot_str += node_def
         nodes+=1
         new_features = feature_names
         new_quantity = 1
         if getattr(self, 'left_tree', None):
             # Recursively build the left tree
-            left_dot_str, new_quantity = self.left_tree.build_dot(new_features, class_names, nodes=nodes,
-                                                               color_map=color_map)
+            left_dot_str, new_quantity = self.left_tree.build_dot(nodes=nodes, max_depth=new_depth,
+                                                                  feature_names=new_features,
+                                                                  class_names=class_names,
+                                                                  label=label,
+                                                                  filled=filled,
+                                                                  leaves_parallel=leaves_parallel,
+                                                                  impurity=impurity,
+                                                                  node_ids=node_ids,
+                                                                  proportion=proportion,
+                                                                  rotate=rotate,
+                                                                  rounded=rounded,
+                                                                  special_characters=special_characters,
+                                                                  precision=precision,
+                                                                  color_map=color_map)
 
             dot_str += f'{nodes-1} -> {nodes};\n'
             dot_str += left_dot_str
         if getattr(self, 'right_tree', None):
             # Recursively build the right tree
             right_child = new_quantity+1
-            right_dot_str, new_quantity = self.right_tree.build_dot(new_features, class_names, nodes=right_child,
-                                                                 color_map=color_map)
+            right_dot_str, new_quantity = self.right_tree.build_dot(nodes=right_child, max_depth=new_depth,
+                                                                    feature_names=new_features,
+                                                                    class_names=class_names,
+                                                                    label=label,
+                                                                    filled=filled,
+                                                                    leaves_parallel=leaves_parallel,
+                                                                    impurity=impurity,
+                                                                    node_ids=node_ids,
+                                                                    proportion=proportion,
+                                                                    rotate=rotate,
+                                                                    rounded=rounded,
+                                                                    special_characters=special_characters,
+                                                                    precision=precision,
+                                                                    color_map=color_map)
             dot_str += right_dot_str
             dot_str += f'{nodes-1} -> {right_child};\n'
             nodes = new_quantity
 
         if getattr(self, 'leaf_model', None):
             # Visualize the entire leaf model
-            new_dot, new_quantity = self.visualize_leaf_tree(nodes, feature_names, class_names, color_map)
+            new_dot, new_quantity = self.visualize_leaf_tree(nodes=nodes, max_depth=new_depth,
+                                                             feature_names=new_features,
+                                                             class_names=class_names,
+                                                             label=label,
+                                                             filled=filled,
+                                                             leaves_parallel=leaves_parallel,
+                                                             impurity=impurity,
+                                                             node_ids=node_ids,
+                                                             proportion=proportion,
+                                                             rotate=rotate,
+                                                             rounded=rounded,
+                                                             special_characters=special_characters,
+                                                             precision=precision,
+                                                             color_map=color_map)
             dot_str += new_dot
         return dot_str, new_quantity
 
-    def visualize_leaf_tree(self, nodes, feature_names, class_names, class_colors):
+    def visualize_leaf_tree(self, nodes,
+                            max_depth: int = None,
+                            feature_names: Optional[Union[np.ndarray, List[str]]] = None,
+                            class_names: Optional[Union[np.ndarray, List[str]]] = None,
+                            label: Literal['all', 'root', 'none'] = 'all',  # no
+                            filled: bool = False,
+                            color_map=None,
+                            leaves_parallel: bool = False,  # no
+                            impurity: bool = True,
+                            node_ids: bool = False,
+                            proportion: bool = False, #no
+                            rotate: bool = False, #no
+                            rounded: bool = True,
+                            special_characters: bool = False,
+                            precision: int = 3,
+                            ):
         leaf_dot = export_graphviz(
             self.leaf_model,
             out_file=None,  # Return as a string
             feature_names=feature_names,
             class_names=class_names,
-            rounded=True,
-            special_characters=True
-        )
+            label=label,
+            filled=filled,
+            leaves_parallel=leaves_parallel,
+            impurity=impurity,
+            node_ids=node_ids,
+            proportion=proportion,
+            rotate=rotate,
+            rounded=rounded,
+            special_characters=special_characters,
+            precision=precision)
 
-        if class_colors:
-            for class_name, color in class_colors.items():
+        if color_map:
+            for class_name, color in color_map.items():
                 leaf_dot = re.sub(
                     f'class *= *{class_name}>',
                     f'class = "{class_name}"> fillcolor="{color}"',
@@ -275,7 +403,7 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
         for line in leaf_dot.splitlines():
             # Keep only lines that define a node or edge (node index or node -> connection)
             if '->' in line or re.match(r'\d+ +(?:\[.*\])*', line):
-                shifted_line = re.sub(r'(\b\d+\b)(?=\s*[\[;]| ->)', shift_index, line).strip()
+                shifted_line = re.sub(r'(\b\d+\b)(?=\s*[\[;]| ->)', shift_index, line)
                 filtered_lines.append(shifted_line)
         filtered_dot = "\n".join(filtered_lines)
 

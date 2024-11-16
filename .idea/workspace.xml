@@ -8,10 +8,13 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="eda12836-d498-4391-a761-80f682c741b3" name="Changes" comment="Clear wording">
+    <list default="true" id="eda12836-d498-4391-a761-80f682c741b3" name="Changes" comment="Example images">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/AdaptiveDecisionTreeClassifier.py" beforeDir="false" afterPath="$PROJECT_DIR$/AdaptiveDecisionTreeClassifier.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/graphs/iris_tree_s0_[1][depth4]-95.6.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/graphs/wine_[alcohol][depth5]-58.4.png" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wine.py" beforeDir="false" afterPath="$PROJECT_DIR$/wine.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -26,20 +29,25 @@
     </option>
   </component>
   <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="master" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "MikhailDolgopolov"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;MikhailDolgopolov&quot;
   }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/MikhailDolgopolov/Custom-Decision-Trees.git",
-    "accountId": "8d7eeb90-8f50-449d-9040-2eb163000c85"
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/MikhailDolgopolov/Custom-Decision-Trees.git&quot;,
+    &quot;accountId&quot;: &quot;8d7eeb90-8f50-449d-9040-2eb163000c85&quot;
   }
-}]]></component>
+}</component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 2
 }</component>
@@ -51,18 +59,23 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "Python.main.executor": "Run",
-    "Python.wine.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "master",
-    "last_opened_file_path": "C:/Users/Mikhail23/Documents/MyDirectory/МИСиС/4й курс/ИАД/TreeExperiments/main.py",
-    "run.code.analysis.last.selected.profile": "aDefault",
-    "settings.editor.selected.configurable": "preferences.pluginManager"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;Python.main.executor&quot;: &quot;Run&quot;,
+    &quot;Python.wine.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;export__graphviz&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/Mikhail23/Documents/MyDirectory/МИСиС/4й курс/ИАД/TreeExperiments/main.py&quot;,
+    &quot;run.code.analysis.last.selected.profile&quot;: &quot;aDefault&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;
   }
-}]]></component>
+}</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\Mikhail23\Documents\MyDirectory\МИСиС\4й курс\ИАД\TreeExperiments\graphs" />
+    </key>
+  </component>
   <component name="RunManager" selected="Python.main">
     <configuration name="main" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="TreeExperiments" />
@@ -195,7 +208,39 @@
       <option name="project" value="LOCAL" />
       <updated>1731677154063</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="Better edge case handling">
+      <option name="closed" value="true" />
+      <created>1731679563636</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1731679563636</updated>
+    </task>
+    <task id="LOCAL-00010" summary="Fixed leaf-drawing bug">
+      <option name="closed" value="true" />
+      <created>1731680804236</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1731680804236</updated>
+    </task>
+    <task id="LOCAL-00011" summary="Visual improvements">
+      <option name="closed" value="true" />
+      <created>1731682441384</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1731682441384</updated>
+    </task>
+    <task id="LOCAL-00012" summary="Example images">
+      <option name="closed" value="true" />
+      <created>1731683461256</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1731683461257</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -217,6 +262,10 @@
     <MESSAGE value="Working fine" />
     <MESSAGE value="Error handling" />
     <MESSAGE value="Clear wording" />
-    <option name="LAST_COMMIT_MESSAGE" value="Clear wording" />
+    <MESSAGE value="Better edge case handling" />
+    <MESSAGE value="Fixed leaf-drawing bug" />
+    <MESSAGE value="Visual improvements" />
+    <MESSAGE value="Example images" />
+    <option name="LAST_COMMIT_MESSAGE" value="Example images" />
   </component>
 </project>
