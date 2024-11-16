@@ -43,7 +43,7 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
                 missing_columns = [name for name in self.split_feature_order if
                                    isinstance(name, str) and name not in self.feature_names]
                 if missing_columns:
-                    raise ValueError(f"Columns {missing_columns} not found in the feature list you provided.")
+                    raise ValueError(f"Columns {missing_columns} not found in the feature list {list(self.feature_names)}.")
                 self.split_feature_order = [
                     list(feature_names).index(name) if isinstance(name, str) else name
                     for name in self.split_feature_order
@@ -148,7 +148,7 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
 
         if bad_split_error_threshold>0:
             if self.criterion not in ['entropy', 'gini']:
-                raise NotImplementedError(f"Split evaluation is not supported for criterion '{self.criterion}'.")
+                raise NotImplementedError(f"Split evaluation is not supported for criterion '{self.criterion}'. Remove bad_split_error_threshold.")
             # Find the best split across all features
             best_split_impurity = 1  # Initialize with maximum impurity
             best_split_gain = 0
@@ -177,23 +177,22 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
                     best_feature_gini = feature_idx
                 best_split_impurity = min(temp_split_impurity, best_split_impurity)
 
-            split = self.feature_names[self.split_index] if getattr(self, "feature_names", False) else f"index {self.split_index}"
+            split = f"index {self.split_index}" if self.feature_names is None else self.feature_names[self.split_index]
             if self.criterion=='gini':
-                best_split = self.feature_names[best_feature_gini] if getattr(self, "feature_names", False) else f"index {best_feature_gini}"
+                best_split = f"index {best_feature_gini}" if self.feature_names is None else self.feature_names[best_feature_gini]
                 if selected_split_impurity > best_split_impurity + bad_split_error_threshold:
                     warnings.warn(
-                        f"The split at {split} is worse than the best possible split, at {best_split}. \n"
+                        f"\nThe split at '{split}' is worse than the best possible split, at '{best_split}'. \n"
                         f"Selected impurity: {selected_split_impurity:.4f}, Best impurity: {best_split_impurity:.4f}. \n"
-                        f"Consider revising your split feature order."
+                        f"Consider revising your split feature order or removing bad_split_error_threshold."
                     )
             if self.criterion == 'entropy':
-                best_split = self.feature_names[best_feature_entropy] if getattr(self, "feature_names",
-                                                                              False) else f"index {best_feature_entropy}"
+                best_split =  f"index {best_feature_entropy}" if self.feature_names is None else self.feature_names[best_feature_entropy]
                 if selected_split_gain + bad_split_error_threshold < best_split_gain:
                     warnings.warn(
-                        f"The split at {split} is worse than the best possible split, at {best_split}. \n"
-                        f"Selected split reduces entropy by: {selected_split_gain:.4f}, Best one: {best_split_gain:.4f}. \n"
-                        f"Consider revising your split feature order."
+                        f"\nThe split at '{split}' is worse than the best possible split, at '{best_split}'. \n"
+                        f"Selected split reduces entropy by: {selected_split_gain:.4f}, while the best one by: {best_split_gain:.4f}. \n"
+                        f"Consider revising your split feature order or removing bad_split_error_threshold."
                     )
 
         next_init_depth = self.overall_max_depth-1 if isinstance(self.overall_max_depth, int) else None
