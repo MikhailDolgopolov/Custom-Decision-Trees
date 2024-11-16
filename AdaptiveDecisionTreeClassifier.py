@@ -1,10 +1,12 @@
 import re
+import warnings
 from types import NoneType
 from typing import List, Union, Optional
 import graphviz
 import pandas as pd
 from graphviz import Source
 from sklearn.impute import SimpleImputer
+from sklearn.metrics import mutual_info_score
 from sklearn.tree import DecisionTreeClassifier, export_graphviz
 import numpy as np
 from sklearn.utils import check_X_y
@@ -26,11 +28,6 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
         if isinstance(feature_names, np.ndarray):
             feature_names = feature_names.tolist()
         self.feature_names = feature_names
-        if max_depth is not None:
-            if not isinstance(max_depth, int) or max_depth <= 0:
-                raise InvalidParameterError(
-                    f"The 'max_depth' parameter must be an int in the range [1, inf), got {max_depth} instead.")
-        self.max_depth = max_depth
         self.split_feature_order = [] if split_feature_order is None else split_feature_order
 
         accepted_lists = (list, np.ndarray, pd.Index)
@@ -46,7 +43,7 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
                 missing_columns = [name for name in self.split_feature_order if
                                    isinstance(name, str) and name not in self.feature_names]
                 if missing_columns:
-                    raise ValueError(f"Columns {missing_columns} not found in the feature list you provided.")
+                    raise ValueError(f"Columns {missing_columns} not found in the feature list {list(self.feature_names)}.")
                 self.split_feature_order = [
                     list(feature_names).index(name) if isinstance(name, str) else name
                     for name in self.split_feature_order
@@ -60,9 +57,16 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
 
             elif any(isinstance(k, (int, str)) for k in self.split_feature_order):
                 raise InvalidParameterError("Incorrect format of split_feature_order. Use either exclusively indices, or exclusively feature names.")
-
-        max_depth -= len(self.split_feature_order)
+        if max_depth is not None:
+            if not isinstance(max_depth, int) or max_depth <= 0:
+                raise InvalidParameterError(
+                    f"The 'max_depth' parameter must be an int in the range [1, inf), got {max_depth} instead.")
+        self.overall_max_depth = max_depth
+        if isinstance(max_depth, int):
+            max_depth -= len(self.split_feature_order)
         super().__init__(max_depth=max_depth, **kwargs)
+        self.max_depth = max_depth
+
         self.__kwargs = kwargs
         if len(self.split_feature_order) > 0:
             self.split_index = self.split_feature_order[0]
@@ -85,12 +89,11 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
                 return self.imputer.fit_transform(X)
             return X
 
-    def fit(self, X, y, **kwargs):
-        self.depth = kwargs.get('depth', 0)
-
-        X, y = check_X_y(X, y, accept_sparse=False)
-        if self.depth == 0 and X.shape[0] == 0:
+    def fit(self, X, y, fit_depth=0, bad_split_error_threshold=0, **kwargs):
+        if fit_depth == 0 and X.shape[0] == 0:
             raise ValueError("Training data cannot be empty!")
+        else:
+            X, y = check_X_y(X, y, accept_sparse=False)
         parent_value:list|None = kwargs.get("parent_value", None)
         if len(y) == 0:
             if parent_value is not None:
@@ -110,7 +113,7 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
         self.classes_ = np.unique(y)
         self.n_classes_ = len(self.classes_)
 
-        if len(self.split_feature_order) == 0 or self.depth >= len(self.split_feature_order):
+        if len(self.split_feature_order) == 0 or isinstance(fit_depth, int) and fit_depth >= len(self.split_feature_order):
             self.leaf_model = DecisionTreeClassifier(max_depth=self.max_depth, **self.__kwargs)
             self.leaf_model.fit(X, y)
             self.impurity = self._calculate_impurity(y)
@@ -122,28 +125,91 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
 
         #Model to find the best threshold
         single_feature_model = DecisionTreeClassifier(
-            criterion=self.criterion, max_depth=1, random_state=self.random_state)
+            criterion="gini", max_depth=1, random_state=self.random_state)
         single_feature_model.fit(X[:, [self.split_index]], y)
 
         self.threshold = single_feature_model.tree_.threshold[0]
+        self.impurity = self._calculate_impurity(y)
+        self.n_node_samples = len(y)
+        self.value = np.bincount(y)  # Class distribution at this node
+
+        def compute_impurity(mask):
+            if mask.sum() == 0:
+                return 0  # Avoid division by zero for empty nodes
+            prob = np.bincount(y[mask]) / mask.sum()
+
+            return 1 - np.sum(prob ** 2)  # Gini impurity
 
         left_mask = X[:, self.split_index] <= self.threshold
         right_mask = ~left_mask
 
+        n_left, n_right = left_mask.sum(), right_mask.sum()
+        left_impurity = compute_impurity(left_mask)
+        right_impurity = compute_impurity(right_mask)
+        selected_split_impurity = (n_left * left_impurity + n_right * right_impurity) / len(y)
+        selected_split_gain = mutual_info_score(y, X[:, self.split_index] <= self.threshold)
+
+        if bad_split_error_threshold>0:
+            if self.criterion not in ['entropy', 'gini']:
+                raise NotImplementedError(f"Split evaluation is not supported for criterion '{self.criterion}'. Remove bad_split_error_threshold.")
+            # Find the best split across all features
+            best_split_impurity = 1  # Initialize with maximum impurity
+            best_split_gain = 0
+            best_feature_gini, best_feature_entropy = None, None
+            for feature_idx in range(X.shape[1]):
+                temp_model = DecisionTreeClassifier(
+                    criterion=self.criterion, max_depth=1, random_state=self.random_state)
+                temp_model.fit(X[:, [feature_idx]], y)
+                temp_threshold = temp_model.tree_.threshold[0]
+
+                temp_gain = mutual_info_score(y, X[:, feature_idx] <= temp_threshold)
+                if temp_gain > best_split_gain:
+                    best_split_gain = temp_gain
+                    best_feature_entropy = feature_idx
+
+                temp_left_mask = X[:, feature_idx] <= temp_threshold
+                temp_right_mask = ~temp_left_mask
+
+                temp_n_left, temp_n_right = temp_left_mask.sum(), temp_right_mask.sum()
+                temp_left_impurity = compute_impurity(temp_left_mask)
+                temp_right_impurity = compute_impurity(temp_right_mask)
+                temp_split_impurity = (temp_n_left * temp_left_impurity + temp_n_right * temp_right_impurity) / len(y)
+
+                if temp_split_impurity<best_split_impurity:
+                    best_split_impurity = temp_split_impurity
+                    best_feature_gini = feature_idx
+                best_split_impurity = min(temp_split_impurity, best_split_impurity)
+
+            split = f"index {self.split_index}" if self.feature_names is None else self.feature_names[self.split_index]
+            if self.criterion=='gini':
+                best_split = f"index {best_feature_gini}" if self.feature_names is None else self.feature_names[best_feature_gini]
+                if selected_split_impurity > best_split_impurity + bad_split_error_threshold:
+                    warnings.warn(
+                        f"\nThe split at '{split}' is worse than the best possible split, at '{best_split}'. \n"
+                        f"Selected impurity: {selected_split_impurity:.4f}, Best impurity: {best_split_impurity:.4f}. \n"
+                        f"Consider revising your split feature order or removing bad_split_error_threshold."
+                    )
+            if self.criterion == 'entropy':
+                best_split =  f"index {best_feature_entropy}" if self.feature_names is None else self.feature_names[best_feature_entropy]
+                if selected_split_gain + bad_split_error_threshold < best_split_gain:
+                    warnings.warn(
+                        f"\nThe split at '{split}' is worse than the best possible split, at '{best_split}'. \n"
+                        f"Selected split reduces entropy by: {selected_split_gain:.4f}, while the best one by: {best_split_gain:.4f}. \n"
+                        f"Consider revising your split feature order or removing bad_split_error_threshold."
+                    )
+
+        next_init_depth = self.overall_max_depth-1 if isinstance(self.overall_max_depth, int) else None
+
         # Recursively train left and right subtrees
         self.left_tree = AdaptiveDecisionTreeClassifier(
-            self.split_feature_order[1:], feature_names=self.feature_names, max_depth =self.max_depth - 1, **self.__kwargs)
-        self.left_tree.fit(X[left_mask], y[left_mask],
-                           depth=self.depth + 1, parent_value=getattr(self, 'value', None))
+            self.split_feature_order[1:], feature_names=self.feature_names, max_depth = next_init_depth, **self.__kwargs)
+        self.left_tree.fit(X[left_mask], y[left_mask], bad_split_error_threshold=bad_split_error_threshold,
+                           fit_depth=fit_depth + 1, parent_value=getattr(self, 'value', None))
 
         self.right_tree = AdaptiveDecisionTreeClassifier(
-            self.split_feature_order[1:], feature_names=self.feature_names, max_depth =self.max_depth - 1, **self.__kwargs)
-        self.right_tree.fit(X[right_mask], y[right_mask],
-                            depth=self.depth + 1, parent_value=getattr(self, 'value', None))
-
-        self.impurity = self._calculate_impurity(y)
-        self.n_node_samples = len(y)
-        self.value = np.bincount(y)  # Class distribution at this node
+            self.split_feature_order[1:], feature_names=self.feature_names, max_depth = next_init_depth, **self.__kwargs)
+        self.right_tree.fit(X[right_mask], y[right_mask], bad_split_error_threshold=bad_split_error_threshold,
+                            fit_depth=fit_depth + 1, parent_value=getattr(self, 'value', None))
 
         return self
 

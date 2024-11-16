@@ -44,8 +44,8 @@ seed = 42
 # Split dataset into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=seed)
 
-seq=["clow"]
-d = 4
+seq=[0, 3, 2]
+d = 6
 my_classifier = AdaptiveDecisionTreeClassifier(
     split_feature_order=seq, feature_names=X.columns, max_depth=d)
 my_classifier.fit(X_train, y_train)
@@ -61,7 +61,7 @@ print("predictions \n", decoded_predictions.value_counts(normalize=True), '\n')
 graph = my_classifier.visualize(class_names=np.unique(y))
 
 graph.render(
-    f"wine_[{'_'.join(map(str, seq))}][depth{d}]-{round(accuracy * 100, 1)}",
+    f"graphs/wine_[{'_'.join(map(str, seq))}][depth{d}]-{round(accuracy * 100, 1)}",
     format="png", cleanup=True)
 
 
