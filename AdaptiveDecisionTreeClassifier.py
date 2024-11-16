@@ -129,6 +129,9 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
         single_feature_model.fit(X[:, [self.split_index]], y)
 
         self.threshold = single_feature_model.tree_.threshold[0]
+        self.impurity = self._calculate_impurity(y)
+        self.n_node_samples = len(y)
+        self.value = np.bincount(y)  # Class distribution at this node
 
         def compute_impurity(mask):
             if mask.sum() == 0:
@@ -196,6 +199,7 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
                     )
 
         next_init_depth = self.overall_max_depth-1 if isinstance(self.overall_max_depth, int) else None
+
         # Recursively train left and right subtrees
         self.left_tree = AdaptiveDecisionTreeClassifier(
             self.split_feature_order[1:], feature_names=self.feature_names, max_depth = next_init_depth, **self.__kwargs)
@@ -206,10 +210,6 @@ class AdaptiveDecisionTreeClassifier(DecisionTreeClassifier):
             self.split_feature_order[1:], feature_names=self.feature_names, max_depth = next_init_depth, **self.__kwargs)
         self.right_tree.fit(X[right_mask], y[right_mask], bad_split_error_threshold=bad_split_error_threshold,
                             fit_depth=fit_depth + 1, parent_value=getattr(self, 'value', None))
-
-        self.impurity = self._calculate_impurity(y)
-        self.n_node_samples = len(y)
-        self.value = np.bincount(y)  # Class distribution at this node
 
         return self
 
